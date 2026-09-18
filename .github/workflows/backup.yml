@@ -1,0 +1,41 @@
+# Spec v0.9 mục 47 — Backup & Recovery.
+#
+# Gói Supabase Free KHÔNG bao gồm automatic backup (daily backup bắt đầu từ Pro,
+# PITR là add-on trả phí). Đây là điểm yếu duy nhất của free tier không thương
+# lượng được — nhưng bù được miễn phí bằng workflow này.
+#
+# Secret cần đặt trong repo: SUPABASE_DB_URL (connection string production)
+#
+# QUAN TRỌNG: backup chưa restore thử là backup chưa tồn tại.
+# Phải test restore ít nhất 1 lần trước khi cho user vào (mục 55.8).
+name: Daily database backup
+
+on:
+  schedule:
+    - cron: '0 18 * * *'   # 01:00 giờ VN
+  workflow_dispatch:
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cài postgresql-client 16
+        run: |
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update -qq && sudo apt-get install -y postgresql-client-16
+
+      - name: pg_dump
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          test -n "$DB_URL" || { echo "Thiếu secret SUPABASE_DB_URL"; exit 1; }
+          mkdir -p backups
+          pg_dump "$DB_URL" --no-owner --no-acl | gzip -9 > "backups/eq-$(date +%F).sql.gz"
+          ls -lh backups/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: backups/
+          retention-days: 30

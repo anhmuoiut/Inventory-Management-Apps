@@ -1,0 +1,17 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "rules": {
+    "no-restricted-imports": ["error", {
+      "patterns": [{
+        "group": ["**/lib/supabase/admin", "@/lib/supabase/admin"],
+        "message": "service_role client CHỈ được import từ lib/services/**. Xem spec v0.9 muc 3c."
+      }]
+    }]
+  },
+  "overrides": [
+    {
+      "files": ["lib/services/**/*.ts", "lib/auth/**/*.ts", "scripts/**/*.ts"],
+      "rules": { "no-restricted-imports": "off" }
+    }
+  ]
+}
